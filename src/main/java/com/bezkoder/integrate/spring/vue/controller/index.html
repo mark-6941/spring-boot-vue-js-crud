@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>固得租車 - 短期租車付款系統</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f4f6f9;
+            font-family: "Microsoft JhengHei", -apple-system, sans-serif;
+        }
+        .pay-card {
+            max-width: 650px;
+            margin: 40px auto;
+            background: #ffffff;
+            padding: 35px;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .brand-header {
+            display: flex;
+            align-items: center;
+            font-size: 26px;
+            font-weight: bold;
+            color: #0d6efd;
+            margin-bottom: 25px;
+        }
+        .brand-logo {
+            color: #e60012;
+            margin-right: 8px;
+            font-size: 28px;
+        }
+        .form-label {
+            font-weight: 500;
+            color: #495057;
+            margin-bottom: 6px;
+        }
+        .btn-submit {
+            background-color: #108ee9;
+            border-color: #108ee9;
+            color: white;
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .btn-submit:hover {
+            background-color: #096dd9;
+        }
+        .credit-box {
+            background-color: #fafafa;
+            border: 1px solid #d9d9d9;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app" class="container">
+    <div class="pay-card">
+        <div class="brand-header border-bottom pb-3">
+            <span class="brand-logo">●</span> 固得租車
+            <span class="text-muted fs-6 ms-2" style="letter-spacing: 1px;">Good Cars</span>
+        </div>
+
+        <div class="text-end mb-3">
+            <a href="#" class="text-decoration-none text-muted small">🔗 複製連結</a>
+        </div>
+
+        <form @submit.prevent="handlePayment">
+            <div class="mb-3">
+                <label class="form-label">姓名</label>
+                <input type="text" class="form-control" v-model="fields.name" placeholder="請輸入姓名" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">手機號碼</label>
+                <input type="tel" class="form-control" v-model="fields.phone" placeholder="請輸入手機號碼" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">取車據點</label>
+                <select class="form-select" v-model="fields.location" required>
+                    <option value="" disabled>取車據點</option>
+                    <option value="台中火車站">台中火車站</option>
+                    <option value="台北總店">台北總店</option>
+                    <option value="高雄左營站">高雄左營站</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">付款金額</label>
+                <input type="number" class="form-control" v-model="fields.amount" placeholder="請輸入金額" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label d-block">付款類別</label>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" id="type1" value="訂金" v-model="fields.payType">
+                    <label class="form-check-label" for="type1">訂金</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" id="type2" value="尾款" v-model="fields.payType">
+                    <label class="form-check-label" for="type2">尾款</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" id="type3" value="罰單" v-model="fields.payType">
+                    <label class="form-check-label" for="type3">罰單</label>
+                </div>
+            </div>
+
+            <div class="mb-4 p-3 credit-box">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small text-muted">🔒 可接受之信用卡</span>
+                    <div>
+                        <span class="badge bg-danger text-white me-1">MasterCard</span>
+                        <span class="badge bg-primary text-white me-1">VISA</span>
+                        <span class="badge bg-success text-white">JCB</span>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small">卡號</label>
+                    <input type="text" class="form-control" v-model="fields.cardNumber" placeholder="**** **** **** ****" required>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-submit" :disabled="loading">
+                <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>付款
+            </button>
+        </form>
+
+        <div v-if="statusMessage" :class="['alert', isSuccess ? 'alert-success' : 'alert-danger', 'mt-3']">
+            {{ statusMessage }}
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+<script>
+    const { createApp, ref } = Vue;
+
+    createApp({
+        setup() {
+            const fields = ref({
+                name: '',
+                phone: '',
+                location: '台中火車站',
+                amount: '',
+                payType: '訂金',
+                cardNumber: ''
+            });
+
+            const loading = ref(false);
+            const statusMessage = ref('');
+            const isSuccess = ref(true);
+
+            const handlePayment = () => {
+                loading.value = true;
+                statusMessage.value = '';
+
+                // 配合後台 @RequestParam，使用 URLSearchParams 封裝 Form 參數
+                const urlParams = new URLSearchParams();
+                urlParams.append('name', fields.value.name);
+                urlParams.append('phone', fields.value.phone);
+                urlParams.append('location', fields.value.location);
+                urlParams.append('amount', fields.value.amount);
+                urlParams.append('payType', fields.value.payType);
+                urlParams.append('cardNumber', fields.value.cardNumber);
+
+                // 發送請求到後端 API
+                axios.post('/api/rentals', urlParams, {
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                })
+                .then(res => {
+                    isSuccess.value = true;
+                    statusMessage.value = `🎉 交易成功！資料已成功打包存入 Tutorial 表 (ID: ${res.data.id})`;
+                    // 清空輸入欄位
+                    fields.value.name = '';
+                    fields.value.phone = '';
+                    fields.value.amount = '';
+                    fields.value.cardNumber = '';
+                })
+                .catch(err => {
+                    isSuccess.value = false;
+                    statusMessage.value = '❌ 交易失敗，請確認 Spring Boot 伺服器是否正常啟動。';
+                    console.error(err);
+                })
+                .finally(() => {
+                    loading.value = false;
+                });
+            };
+
+            return { fields, handlePayment, loading, statusMessage, isSuccess };
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>

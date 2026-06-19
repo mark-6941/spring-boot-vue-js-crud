@@ -1,0 +1,6 @@
+com\bezkoder\integrate\spring\vue\repository\SpringBootTest.class
+com\bezkoder\integrate\spring\vue\SpringBootVueJsCrudApplication.class
+com\bezkoder\integrate\spring\vue\repository\Test.class
+com\bezkoder\integrate\spring\vue\controller\TutorialController.class
+com\bezkoder\integrate\spring\vue\model\Tutorial.class
+com\bezkoder\integrate\spring\vue\repository\TutorialRepository.class
