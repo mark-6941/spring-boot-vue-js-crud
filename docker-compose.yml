@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # 後端 API 服務
+  api-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      # 自動覆寫 application.properties 的設定，對齊容器內的 MySQL 服務名
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/testdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=123456
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+
+  # 資料庫服務
+  mysql-db:
+    image: mysql:8.0
+    ports:
+      #- "3306:3306"
+      - "3307:3306"  # 💡 意思是：主機透過 3307 連進來，容器內部依然維持 3306
+    environment:
+      - MYSQL_ROOT_PASSWORD=123456
+      - MYSQL_DATABASE=testdb
+    volumes:
+      - mysql_data:/var/lib/mysql
+    # 確保資料庫完全啟動後，後端才去連線
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql_data:
